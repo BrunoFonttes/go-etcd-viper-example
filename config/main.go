@@ -1,13 +1,17 @@
 package config
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/spf13/viper"
 	_ "github.com/spf13/viper/remote"
 )
+
+var errEtcdConfigsNotFound = errors.New("etcd configs not found")
 
 type config struct {
 	url     string
@@ -42,10 +46,14 @@ func loadConf() error {
 var Conf config
 
 func Load() {
-	etcdHost := "http://127.0.0.1:2379"
-	etcdWatchKey := "/democonfig"
+	etcdHost := os.Getenv("etcd_host")
+	etcdWatchKey := os.Getenv("etcd_watch_key")
 
-	viper.AddRemoteProvider("etcd", etcdHost, etcdWatchKey)
+	if etcdHost == "" || etcdWatchKey == "" {
+		panic(fmt.Errorf("%w etcd_host: %s, etcd_watch_key: %s", errEtcdConfigsNotFound, etcdHost, etcdWatchKey))
+	}
+
+	viper.AddRemoteProvider("etcd3", etcdHost, etcdWatchKey)
 	viper.SetConfigType("json") // because there is no file extension in a stream of bytes, supported extensions are "json", "toml", "yaml", "yml", "properties", "props", "prop", "env", "dotenv"
 
 	if err := viper.ReadRemoteConfig(); err != nil {
